@@ -91,14 +91,23 @@ Ces paramètres (URSSAF, épargne, fonds de roulement) sont configurables dans
 1. **Heuristique (hors-ligne, par défaut)** — analyse locale de l'image (dominante
    colorimétrique, « charge visuelle ») croisée avec les paramètres du chantier
    pour proposer un devis cohérent.
-2. **Claude Vision (en ligne)** — si la variable `VITE_ANTHROPIC_PROXY` pointe vers
-   un endpoint relayant vers l'API Claude, l'image y est envoyée et l'analyse
-   provient du modèle. Le branchement est transparent (aucun changement d'UI).
+2. **Claude Vision (en ligne)** — le backend (`server/`) expose
+   `POST /photos/analyze` qui envoie l'image à **Claude (`claude-opus-5`) en
+   sorties structurées** et renvoie exactement un objet `AiAnalysis`. Le
+   frontend s'y branche via `VITE_ANTHROPIC_PROXY`, sans aucun changement d'UI.
 
 ```bash
-# .env.local
-VITE_ANTHROPIC_PROXY=https://votre-endpoint/analyse-photo
+# 1. Backend
+cd server && cp .env.example .env   # renseigner ANTHROPIC_API_KEY + DATABASE_URL
+npm install && npx prisma migrate dev && npm run dev
+
+# 2. Frontend — .env.local
+VITE_ANTHROPIC_PROXY=http://localhost:4000/photos/analyze
+# puis stocker le JWT obtenu via /auth/login dans localStorage['rfd-api-token']
 ```
+
+La clé API reste **côté serveur** ; les refus de sécurité sont gérés et le
+frontend bascule automatiquement en mode heuristique si l'appel échoue.
 
 L'utilisateur peut **modifier chaque valeur** proposée : l'IA n'est qu'une aide à
 la saisie.
@@ -112,8 +121,10 @@ d'un backend est prévu sans refonte :
 
 - La persistance passe par une seule couche (`store/store.ts` + `lib/db.ts`) :
   remplacer `persist(localStorage)` par un storage synchronisant vers l'API.
-- Un **scaffold backend** (Node.js + Express + Prisma + PostgreSQL + JWT) est fourni
-  dans [`server/`](server/README.md). Le schéma Prisma reflète `src/types.ts`.
+- Un **backend** (Node.js + Express + Prisma + PostgreSQL + JWT) est fourni dans
+  [`server/`](server/README.md) : authentification, routes `clients`,
+  `prestations`, `devis` (numérotation auto, historique) et l'analyse **Claude
+  Vision** `/photos/analyze`. Le schéma Prisma reflète `src/types.ts`.
 - Le stockage des photos (`lib/db.ts`) est isolé : brancher un bucket cloud
   sécurisé (S3/GCS) revient à réimplémenter `putBlob` / `getBlobUrl`.
 

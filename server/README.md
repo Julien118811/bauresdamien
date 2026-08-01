@@ -27,19 +27,37 @@ npx prisma migrate dev        # crée le schéma
 npm run dev                   # http://localhost:4000
 ```
 
-## Points d'entrée (extrait)
+## Points d'entrée
 
 | Méthode | Route | Rôle |
 |---|---|---|
-| `POST` | `/auth/register` | Création de compte + entreprise |
+| `POST` | `/auth/register` | Création de compte + entreprise → JWT |
 | `POST` | `/auth/login` | Connexion → JWT |
-| `GET/POST` | `/clients` | Liste / création (protégé) |
-| `GET/POST/PUT` | `/devis` | Devis (protégé) |
-| `GET/POST` | `/prestations` | Bibliothèque (protégé) |
-| `POST` | `/photos` | Upload vers bucket sécurisé |
+| `GET/POST/PUT/DELETE` | `/clients` | Clients (isolés par entreprise) |
+| `GET/POST/PUT/DELETE` | `/prestations` | Bibliothèque de prestations |
+| `GET/POST/PUT/DELETE` | `/devis` | Devis + lignes + historique (numérotation auto) |
+| `POST` | `/devis/:id/status` | Changement de statut + historique |
+| `POST` | `/photos/analyze` | **Analyse IA d'une photo via Claude Vision** |
 
 Toutes les routes `/*` (hors `/auth`) exigent l'en-tête
 `Authorization: Bearer <token>` (voir `src/middleware/auth.ts`).
+
+## Analyse IA — Claude Vision
+
+`POST /photos/analyze` reçoit `{ image (base64), mediaType, site }` et renvoie un
+objet **`AiAnalysis`** identique à la sortie du mode heuristique frontend — le
+branchement est donc transparent (voir `src/lib/anthropic.ts`).
+
+- Modèle : `claude-opus-5` (configurable via `ANTHROPIC_MODEL`).
+- **Sorties structurées** (`output_config.format` + schéma JSON) : la réponse
+  respecte exactement la forme `AiAnalysis`, sans post-validation.
+- La clé API (`ANTHROPIC_API_KEY`) reste **côté serveur** ; les refus de sécurité
+  (`stop_reason: "refusal"`) sont gérés et renvoient une erreur exploitable.
+
+Côté frontend, définir `VITE_ANTHROPIC_PROXY=http://localhost:4000/photos/analyze`
+et stocker le JWT dans `localStorage['rfd-api-token']` (ou
+`VITE_ANTHROPIC_PROXY_TOKEN`). Sans configuration, le frontend reste en mode
+heuristique hors-ligne.
 
 ## Synchronisation frontend
 

@@ -45,14 +45,23 @@ export async function analyzePhoto(input: AnalyzeInput): Promise<AiAnalysis> {
 
 async function analyzeWithClaude(proxy: string, input: AnalyzeInput): Promise<AiAnalysis> {
   const b64 = await blobToBase64(input.imageBlob);
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // Jeton JWT du backend (endpoint /photos/analyze protégé). Optionnel : sans
+  // backend, VITE_ANTHROPIC_PROXY n'est pas défini et on reste en heuristique.
+  const token =
+    (import.meta.env.VITE_ANTHROPIC_PROXY_TOKEN as string | undefined) ||
+    localStorage.getItem('rfd-api-token') ||
+    '';
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const res = await fetch(proxy, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       image: b64,
       mediaType: input.imageBlob.type || 'image/jpeg',
       site: input.site,
-      // Le prompt côté serveur demande à Claude de renvoyer un objet AiAnalysis.
+      // Le serveur renvoie un objet AiAnalysis (structured outputs Claude Vision).
     }),
   });
   if (!res.ok) throw new Error(`Proxy IA: ${res.status}`);
