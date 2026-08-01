@@ -1,0 +1,164 @@
+// Schéma Prisma — miroir du modèle frontend (src/types.ts).
+// Isolation des données par entreprise (companyId).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id            String       @id @default(cuid())
+  name          String
+  legalForm     String       @default("Micro-entreprise")
+  siret         String       @default("")
+  addressLine1  String       @default("")
+  postalCode    String       @default("")
+  city          String       @default("")
+  phone         String       @default("")
+  email         String       @default("")
+  website       String       @default("")
+  logoUrl       String       @default("")
+  iban          String       @default("")
+  bic           String       @default("")
+  vatEnabled    Boolean      @default(true)
+  defaultVat    Float        @default(20)
+  legalMention  String       @default("")
+  cgv           String       @default("")
+  quotePrefix   String       @default("DEV-")
+  quoteCounter  Int          @default(1)
+  validityDays  Int          @default(30)
+  urssafRate    Float        @default(11)
+  savingsRate   Float        @default(10)
+  workingCapRate Float       @default(10)
+  accentColor   String       @default("#ff6a2b")
+  createdAt     DateTime     @default(now())
+
+  users        User[]
+  clients      Client[]
+  prestations  Prestation[]
+  devis        Devis[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String   @default("")
+  role         String   @default("owner") // owner | member
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+model Client {
+  id           String   @id @default(cuid())
+  firstName    String   @default("")
+  lastName     String   @default("")
+  company      String   @default("")
+  addressLine1 String   @default("")
+  postalCode   String   @default("")
+  city         String   @default("")
+  phone        String   @default("")
+  email        String   @default("")
+  notes        String   @default("")
+  companyId    String
+  parent       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  devis        Devis[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+model Prestation {
+  id          String   @id @default(cuid())
+  label       String
+  description String   @default("")
+  category    String
+  unit        String
+  unitPrice   Float
+  unitCost    Float
+  vatRate     Float    @default(20)
+  averageTimeH Float   @default(0)
+  equipment   String   @default("")
+  products    String   @default("")
+  companyId   String
+  parent      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+model Devis {
+  id           String       @id @default(cuid())
+  number       String
+  title        String       @default("")
+  status       String       @default("brouillon")
+  validUntil   DateTime
+  floorArea    Float        @default(0)
+  ceilingHeight Float       @default(2.5)
+  roundTripKm  Float        @default(0)
+  volume       Float        @default(0)
+  notes        String       @default("")
+  signatureUrl String?
+  signerName   String?
+  signedAt     DateTime?
+  locked       Boolean      @default(false)
+  reminderAt   DateTime?
+  clientId     String
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId    String
+  parent       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lines        DevisLine[]
+  photos       Photo[]
+  history      HistoryEntry[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([companyId])
+  @@index([clientId])
+}
+
+model DevisLine {
+  id           String  @id @default(cuid())
+  prestationId String?
+  description  String  @default("")
+  quantity     Float   @default(1)
+  unit         String  @default("forfait")
+  unitPrice    Float   @default(0)
+  unitCost     Float   @default(0)
+  vatRate      Float   @default(20)
+  discountPct  Float   @default(0)
+  position     Int     @default(0)
+  devisId      String
+  devis        Devis   @relation(fields: [devisId], references: [id], onDelete: Cascade)
+
+  @@index([devisId])
+}
+
+model Photo {
+  id           String  @id @default(cuid())
+  url          String
+  annotatedUrl String?
+  caption      String  @default("")
+  category     String  @default("Avant")
+  annotations  Json    @default("[]")
+  devisId      String
+  devis        Devis   @relation(fields: [devisId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@index([devisId])
+}
+
+model HistoryEntry {
+  id      String   @id @default(cuid())
+  label   String
+  at      DateTime @default(now())
+  devisId String
+  devis   Devis    @relation(fields: [devisId], references: [id], onDelete: Cascade)
+
+  @@index([devisId])
+}

@@ -1,0 +1,13 @@
+{
+  "name": "RFD Devis",
+  "short_name": "RFD Devis",
+  "description": "Devis professionnels avec photos, annotation, IA et calcul de rentabilité.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#16243d",
+  "theme_color": "#16243d",
+  "icons": [
+    { "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
